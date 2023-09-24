@@ -1,16 +1,9 @@
-package main
+package list
 
 import (
 	"fmt"
 	"math/rand"
 )
-
-// импортировать не получилось ни main, ни node//
-type node struct {
-	id    int64
-	value int64
-	next  *node
-}
 
 type List struct {
 	len       int64
