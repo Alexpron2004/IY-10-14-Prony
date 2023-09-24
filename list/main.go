@@ -1,9 +1,10 @@
-package list
+package main
 
 import (
 	"fmt"
-	list "list/storage/list"
+	list "list/storage"
 )
+//импортировать файл node и list в main не получилось//
 
 func main() {
 	list := &List{}
