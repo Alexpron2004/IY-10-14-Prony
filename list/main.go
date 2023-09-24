@@ -1,7 +1,8 @@
-package main
+package list
 
 import (
 	"fmt"
+	list "list/storage/list"
 )
 
 func main() {
