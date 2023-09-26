@@ -59,7 +59,7 @@ func (s Map) RemoveByValue(value int64) (id int64) {
 
 // RemoveAllByValue удаляет все элементы из списка по значению
 func (s Map) RemoveAllByValue(value int64) (id []int64) {
-	for data, id := range s.mp {
+	for id, data := range s.mp {
 		if value == data {
 			delete(s.mp, id)
 		}
@@ -170,7 +170,7 @@ func main() {
 	l.RemoveByIndex(500000)
 	l.Print()
 	fmt.Println("RemoveAllByValue: ")
-	l.RemoveAllByValue(3)
+	l.RemoveAllByValue(5)
 	l.Print()
 	fmt.Println("Clear Map: ")
 	l.mapClear()
