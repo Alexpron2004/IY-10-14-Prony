@@ -2,11 +2,7 @@ package psg
 
 import (
 	"context"
-	"fmt"
 	"net/url"
-	"strconv"
-	"strings"
-	"text/template"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pkg/errors"
@@ -19,13 +15,6 @@ type Record struct {
 	MiddleName string `json:"middle_name,omitempty"`
 	Phone      string `json:"phone"`
 	Address    string `json:"address"`
-}
-
-type Cond struct {
-	Lop    string
-	PgxInd string
-	Field  string
-	Value  any
 }
 
 // Psg представляет гейт к базе данных PostgreSQL.
@@ -67,77 +56,49 @@ func parseConnectionString(dburl, user, password string) (db *pgxpool.Pool, err 
 }
 
 // RecordAdd добавляет новую запись в базу данных.
-func (p *Psg) RecordAdd(record Record) (err error) {
-	defer func() { err = errors.Wrap(err, "postgres (p *Psg) RecordAdd()") }()
-	query := `INSERT INTO Address ("firstname", "lastname", "middlename", "phone", "address") VALUES ($1, $2, $3, $4, $5);`
-	_, err = p.Exec(context.Background(), query, record.firstname, record.LastName, record.MiddleName, record.Phone, record.Address)
-	return
+func (p *Psg) RecordAdd(record Record) (int64, error) {
+	var id int64
+	err := p.conn.QueryRow(context.Background(), "INSERT INTO records (name, last_name, middle_name, phone, address) VALUES ($1, $2, $3, $4, $5) RETURNING id", record.Name, record.LastName, record.MiddleName, record.Phone, record.Address).Scan(&id)
+	if err != nil {
+		return 0, err
+	}
+	return id, nil
 }
 
 // RecordsGet возвращает записи из базы данных на основе предоставленных полей Record.
-func (p *Psg) RecordsGet(record Record) ( []Record, err error) {
-	defer func() { err = errors.Wrap(err, "postgres (p *Psg) RecordsGet()") }()
-
-	sqlFields, values, err := StructToFieldsValues(r, "sql.field")
+func (p *Psg) RecordsGet(record Record) ([]Record, error) {
+	var records []Record
+	rows, err := p.conn.Query(context.Background(), "SELECT id, name, last_name, middle_name, phone, address FROM records WHERE name = $1 AND last_name = $2", record.Name, record.LastName)
 	if err != nil {
-		return
+		return nil, err
 	}
+	defer rows.Close()
 
-	var conds []Cond
-
-	for i := range sqlFields {
-		if i == 0 {
-			conds = append(conds, Cond{
-				Lop:    "",
-				PgxInd: "$" + strconv.Itoa(i+1),
-				Field:  sqlFields[i],
-				Value:  values[i],
-			})
-			continue
+	for rows.Next() {
+		var r Record
+		err := rows.Scan(&r.ID, &r.Name, &r.LastName, &r.MiddleName, &r.Phone, &r.Address)
+		if err != nil {
+			return nil, err
 		}
-		conds = append(conds, Cond{
-			Lop:    "AND",
-			PgxInd: "$" + strconv.Itoa(i+1),
-			Field:  sqlFields[i],
-			Value:  values[i],
-		})
+		records = append(records, r)
 	}
-
-	query := `
-	SELECT 
-		id, name, last_name, middle_name, address, phone
-	FROM
-	    address_book
-	WHERE
-		{{range .}} {{.Lop}} {{.Field}} = {{.PgxInd}}{{end}}
-;
-`
-	tmpl, err := template.New("").Parse(query)
-	if err != nil {
-		return
-	}
-
-	var sb strings.Builder
-	err = tmpl.Execute(&sb, conds)
-	if err != nil {
-		return
-	}
-	fmt.Println(sb.String())
-	return rw.err
+	return records, nil
 }
 
 // RecordUpdate обновляет существующую запись в базе данных по номеру телефона.
 func (p *Psg) RecordUpdate(record Record) error {
-	defer func() { err = errors.Wrap(err, "postgres (p *Psg) RecordUpdate()") }()
-	query := `INSERT INTO test ("firstname", "lastname", "middlename", "phone", "address") VALUES ($1, $2, $3, $4, $5) WHERE "phone"=$4;`
-	_, err = p.Exec(context.Background(), query, record.firstname, record.LastName, record.MiddleName, record.Phone, record.Address)
-	return nil
+	_, err := p.conn.Exec(context.Background(), "UPDATE records SET name = $1, last_name = $2, middle_name = $3, address = $4 WHERE phone = $5", record.Name, record.LastName, record.MiddleName, record.Address, record.Phone)
+	return err
 }
 
 // RecordDeleteByPhone удаляет запись из базы данных по номеру телефона.
 func (p *Psg) RecordDeleteByPhone(phone string) error {
-	defer func() { err = errors.Wrap(err, "postgres (p *Psg) RecordDeleteByPhone()") }()
-	query := `DELETE * FROM Address WHERE "phone"=$4;`
-	_, err = p.conn.Exec(context.Background(), query, record.firstname, record.LastName, record.MiddleName, record.Phone, record.Address)
+	commandTag, err := p.conn.Exec(context.Background(), "DELETE FROM records WHERE phone = $1", phone)
+	if err != nil {
+		return err
+	}
+	if commandTag.RowsAffected() == 0 {
+		return errors.New("Record not found")
+	}
 	return nil
 }
