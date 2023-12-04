@@ -1,15 +1,14 @@
 package main
 
 import (
-	"Modprj/controllers/stdhttp"
-	"Modprj/gate/psg"
+	"Addressprj/controllers/stdhttp"
+	"Addressprj/gate/psg"
 	"fmt"
 	"net/http"
-	"os"
 )
 
 func main() {
-	s, err := psg.NewPsg("postgres://postgres:1234@localhost:5432/node", "prony", os.Getenv("1234"))
+	s, err := psg.NewPsg("postgres://Alex:1234@localhost:5432/Address", "Alex", "1234")
 	if err != nil {
 		fmt.Println("Error")
 	}
