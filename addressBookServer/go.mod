@@ -1,4 +1,4 @@
-module Modprj
+module Addressprj
 
 go 1.21.0
 
