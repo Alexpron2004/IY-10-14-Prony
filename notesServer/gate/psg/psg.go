@@ -56,7 +56,13 @@ func parseConnectionString(dburl, user, password string) (db *pgxpool.Pool, err 
 // NodeAdd добавляет новую запись в базу данных.
 func (p *Psg) NodeAdd(node Node) (err error) {
 	defer func() { err = errors.Wrap(err, "postgres (p *Psg) RecordAdd()") }()
-	query := `INSERT INTO articles ("title", "anons", "full_text") VALUES ($1, $2, $3);`
+	query := `INSERT INTO node ("title", "anons", "full_text") VALUES ($1, $2, $3);`
 	_, err = p.conn.Exec(context.Background(), query, node.Title, node.Anons, node.Full_text)
 	return
+}
+
+// NodeUpdate обновляет существующую запись в базе данных по номеру телефона.
+func (p *Psg) NodeUpdate(node Node) error {
+	_, err := p.conn.Exec(context.Background(), "UPDATE node SET title = $1, anons = $2, full_text = $3 WHERE title = $1", node.Title, node.Anons, node.Full_text)
+	return err
 }
