@@ -1,0 +1,15 @@
+{{ define "delete" }}
+
+{{ template "header" }}
+
+<main class="px-3">
+    <h1 class="cover-heading">Форма добавления записи</h1>
+    <form action="/RecordDeleteByPhone" method="post">
+        <input type="text" name="phone" id="phone" class="form-control" placeholder="Введите phone"><br>
+        <button class="btn btn-warning">Удалить</button>
+    </form>
+  </main>
+
+{{ template "footer" }}
+
+{{ end }}
