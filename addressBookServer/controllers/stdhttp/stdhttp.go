@@ -25,11 +25,19 @@ type Controller struct {
 
 // NewController создает новый Controller.
 func NewController(addr string, db *psg.Psg) *Controller {
+	var contr = &Controller{DB: db, Srv: &http.Server{}}
 	http.HandleFunc("/", index)
 	http.HandleFunc("/create", createpage)
+	http.HandleFunc("/get", getpage)
+	http.HandleFunc("/update", updatepage)
+	http.HandleFunc("/delete", deletepage)
+	http.HandleFunc("/RecordAdd", contr.RecordAdd)
+	http.HandleFunc("/RecordGet", contr.RecordGet)
+	http.HandleFunc("/RecordUpdate", contr.RecordUpdate)
+	http.HandleFunc("/RecordDeleteByPhone", contr.RecordDeleteByPhone)
 	fmt.Println("Сервер запущен на порту 8080")
 	http.ListenAndServe(":8080", nil)
-	return nil
+	return contr
 }
 
 func index(w http.ResponseWriter, r *http.Request) {
@@ -52,32 +60,72 @@ func createpage(w http.ResponseWriter, r *http.Request) {
 	t.ExecuteTemplate(w, "create", nil)
 }
 
+func getpage(w http.ResponseWriter, r *http.Request) {
+	t, err := template.ParseFiles("templates/get.html", "templates/header.html", "templates/footer.html")
+
+	if err != nil {
+		fmt.Fprintf(w, err.Error())
+	}
+
+	t.ExecuteTemplate(w, "get", nil)
+}
+
+func updatepage(w http.ResponseWriter, r *http.Request) {
+	t, err := template.ParseFiles("templates/update.html", "templates/header.html", "templates/footer.html")
+
+	if err != nil {
+		fmt.Fprintf(w, err.Error())
+	}
+
+	t.ExecuteTemplate(w, "update", nil)
+}
+
+func deletepage(w http.ResponseWriter, r *http.Request) {
+	t, err := template.ParseFiles("templates/delete.html", "templates/header.html", "templates/footer.html")
+
+	if err != nil {
+		fmt.Fprintf(w, err.Error())
+	}
+
+	t.ExecuteTemplate(w, "delete", nil)
+}
+
 // RecordAdd обрабатывает HTTP запрос для добавления новой записи.
 func (c *Controller) RecordAdd(w http.ResponseWriter, r *http.Request) {
 	name := r.FormValue("name")
-	last_Name := r.FormValue("last_name")
-	MiddleName := r.FormValue("middle_name")
+	lastname := r.FormValue("last_name")
+	middleName := r.FormValue("middle_name")
 	phone := r.FormValue("phone")
 	address := r.FormValue("address")
-	p := psg.Record{Name: name, LastName: last_Name, MiddleName: MiddleName, Phone: phone, Address: address}
+	p := psg.Record{Name: name, LastName: lastname, MiddleName: middleName, Phone: phone, Address: address}
 	c.DB.RecordAdd(p)
 }
 
 // RecordsGet обрабатывает HTTP запрос для получения записей на основе предоставленных полей Record.
+func (c *Controller) RecordGet(w http.ResponseWriter, r *http.Request) {
+	name := r.FormValue("name")
+	lastname := r.FormValue("last_name")
+	middleName := r.FormValue("middle_name")
+	phone := r.FormValue("phone")
+	address := r.FormValue("address")
+	p := psg.Record{Name: name, LastName: lastname, MiddleName: middleName, Phone: phone, Address: address}
+	c.DB.RecordGet(p)
+}
 
 // RecordUpdate обрабатывает HTTP запрос для обновления записи.
+func (c *Controller) RecordUpdate(w http.ResponseWriter, r *http.Request) {
+	name := r.FormValue("name")
+	lastname := r.FormValue("last_name")
+	middleName := r.FormValue("middle_name")
+	phone := r.FormValue("phone")
+	address := r.FormValue("address")
+	p := psg.Record{Name: name, LastName: lastname, MiddleName: middleName, Phone: phone, Address: address}
+	c.DB.RecordUpdate(p)
+}
 
 // RecordDeleteByPhone обрабатывает HTTP запрос для удаления записи по номеру телефона.
 func (c *Controller) RecordDeleteByPhone(w http.ResponseWriter, r *http.Request) {
-	phone := r.URL.Query().Get("phone")
-	if phone == "" {
-		http.Error(w, "Phone parameter is required", http.StatusBadRequest)
-		return
-	}
-	err := c.DB.RecordDeleteByPhone(phone)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
+	phone := r.FormValue("phone")
+	p := psg.Record{Phone: phone}
+	c.DB.RecordUpdate(p)
 }
