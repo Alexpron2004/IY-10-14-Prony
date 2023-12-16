@@ -2,6 +2,7 @@ package psg
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -56,19 +57,23 @@ func parseConnectionString(dburl, user, password string) (db *pgxpool.Pool, err 
 }
 
 // RecordAdd добавляет новую запись в базу данных.
-func (p *Psg) RecordAdd(record Record) (int64, error) {
-	var id int64
-	err := p.conn.QueryRow(context.Background(), "INSERT INTO records (name, last_name, middle_name, phone, address) VALUES ($1, $2, $3, $4, $5) RETURNING id", record.Name, record.LastName, record.MiddleName, record.Phone, record.Address).Scan(&id)
-	if err != nil {
-		return 0, err
-	}
-	return id, nil
+func (p *Psg) RecordAdd(record Record) (err error) {
+	defer func() { err = errors.Wrap(err, "postgres (p *Psg) RecordAdd()") }()
+	query := `INSERT INTO address ("firstname", "lastname", "middlename", "phone", "address") VALUES ($1, $2, $3, $4, $5);`
+	_, err = p.conn.Exec(context.Background(), query, record.Name, record.LastName, record.MiddleName, record.Phone, record.Address)
+	return
+}
+
+// RecordUpdate обновляет существующую запись в базе данных по номеру телефона.
+func (p *Psg) RecordUpdate(record Record) error {
+	_, err := p.conn.Exec(context.Background(), "UPDATE address SET firstname = $1, lastname = $2, middlename = $3, address = $5 WHERE phone = $4", record.Name, record.LastName, record.MiddleName, record.Phone, record.Address)
+	return err
 }
 
 // RecordsGet возвращает записи из базы данных на основе предоставленных полей Record.
-func (p *Psg) RecordsGet(record Record) ([]Record, error) {
+func (p *Psg) RecordGet(record Record) ([]Record, error) {
 	var records []Record
-	rows, err := p.conn.Query(context.Background(), "SELECT id, name, last_name, middle_name, phone, address FROM records WHERE name = $1 AND last_name = $2", record.Name, record.LastName)
+	rows, err := p.conn.Query(context.Background(), "SELECT id, firstname, lastname, middlename, phone, address FROM address WHERE firstname = $1 AND lastname = $2 OR middlename = $3 OR phone = $4 OR address = $5", record.Name, record.LastName, record.MiddleName, record.Phone, record.Address)
 	if err != nil {
 		return nil, err
 	}
@@ -82,23 +87,16 @@ func (p *Psg) RecordsGet(record Record) ([]Record, error) {
 		}
 		records = append(records, r)
 	}
-	return records, nil
-}
 
-// RecordUpdate обновляет существующую запись в базе данных по номеру телефона.
-func (p *Psg) RecordUpdate(record Record) error {
-	_, err := p.conn.Exec(context.Background(), "UPDATE records SET name = $1, last_name = $2, middle_name = $3, address = $4 WHERE phone = $5", record.Name, record.LastName, record.MiddleName, record.Address, record.Phone)
-	return err
+	fmt.Println(records)
+	return records, nil
 }
 
 // RecordDeleteByPhone удаляет запись из базы данных по номеру телефона.
 func (p *Psg) RecordDeleteByPhone(phone string) error {
-	commandTag, err := p.conn.Exec(context.Background(), "DELETE FROM records WHERE phone = $1", phone)
+	_, err := p.conn.Exec(context.Background(), "DELETE FROM address WHERE phone = $1", phone)
 	if err != nil {
 		return err
-	}
-	if commandTag.RowsAffected() == 0 {
-		return errors.New("Record not found")
 	}
 	return nil
 }
